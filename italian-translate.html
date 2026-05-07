@@ -221,6 +221,17 @@
   }
   .word-form { font-size: 17px; font-weight: 600; }
   .word-meaning { color: var(--text-dim); font-size: 15px; text-align: right; flex: 1; }
+  .word-meta {
+    margin-top: 6px;
+    font-size: 13.5px; line-height: 1.45; color: var(--text-dim);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .word-meta .lemma-row { color: var(--text); }
+  .word-meta .lemma-row .lemma {
+    font-style: italic; font-weight: 500;
+  }
+  .word-meta .lemma-row .arrow { color: var(--text-dim); margin: 0 4px; }
+  .word-meta .role-row { color: var(--accent); font-weight: 500; }
   .word-detail {
     display: none;
     margin-top: 10px; padding-top: 10px;
@@ -228,7 +239,11 @@
     font-size: 14px; color: var(--text-dim); line-height: 1.55;
   }
   .word-detail .lbl { color: var(--accent); font-weight: 600; }
-  .word-detail .lemma { color: var(--text); font-style: italic; }
+  .word-card .tap-hint {
+    margin-top: 6px; font-size: 11px; color: var(--text-dim);
+    opacity: 0.6; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .word-card.expanded .tap-hint { display: none; }
 
   /* History */
   .history h3 {
@@ -555,7 +570,12 @@
 
 Pitch explanations at B2/C1: don't waste words on basic gender/number agreement, but DO call out subjunctive triggers (penso che, benché, prima che) and required mood/tense; idioms and fixed expressions; register (formale/colloquiale/volgare/regionale); false friends; clitic pronouns (mi/ti/lo/la/ne/ci/glielo) and what they refer to; aspect choice (passato prossimo vs imperfetto) when notable.
 
-For each word in the ORIGINAL Italian (in order), include word (surface form), lemma (dictionary form), meaning (concise English gloss), role (syntactic role + grammatical info, e.g. "verbo: presente indicativo, 1a sg" or "congiunzione subordinante che richiede congiuntivo"), and note (register/idiom/nuance, or empty string).
+For each word in the ORIGINAL Italian (in order), include:
+- word: the surface form as it appeared
+- lemma: dictionary form — infinitive for verbs (e.g. "essere", "andare"), masculine singular for adjectives/nouns
+- meaning: concise English gloss
+- role: ALWAYS specify the part of speech AND, for verbs, the full tense+mood+person+number, e.g. "verbo: indicativo presente, 1a sg" / "verbo: passato prossimo (avere + participio passato), 3a sg" / "verbo: congiuntivo imperfetto, 2a sg" / "verbo: condizionale presente, 1a pl". For non-verbs use forms like "sostantivo m. sg.", "aggettivo f. pl.", "preposizione articolata (di + il)", "pronome clitico (oggetto diretto, 3a sg m.)", "congiunzione subordinante (richiede congiuntivo)".
+- note: register, idiom, nuance, or anything learner-relevant — empty string if nothing notable.
 
 For grammar: set correct=true if the Italian is naturally formed; otherwise correct=false, supply corrected (the fixed Italian), and note (1-2 lines on what was off). literal = word-for-word English; natural = what a native English speaker would actually say.`;
 
@@ -712,6 +732,8 @@ For grammar: set correct=true if the Italian is naturally formed; otherwise corr
     (d.words || []).forEach((w) => {
       const card = document.createElement('div');
       card.className = 'word-card';
+
+      // Top row: surface word + English meaning
       const head = document.createElement('div');
       head.className = 'word-head';
       const wf = document.createElement('span');
@@ -722,28 +744,57 @@ For grammar: set correct=true if the Italian is naturally formed; otherwise corr
       wm.textContent = safe(w.meaning);
       head.appendChild(wf);
       head.appendChild(wm);
+      card.appendChild(head);
 
-      const detail = document.createElement('div');
-      detail.className = 'word-detail';
-      const lemmaLine = document.createElement('div');
-      lemmaLine.innerHTML = `<span class="lbl">lemma:</span> <span class="lemma"></span>`;
-      lemmaLine.querySelector('.lemma').textContent = safe(w.lemma);
-      const roleLine = document.createElement('div');
-      roleLine.innerHTML = `<span class="lbl">role:</span> <span></span>`;
-      roleLine.querySelector('span:last-child').textContent = safe(w.role);
-      detail.appendChild(lemmaLine);
-      detail.appendChild(roleLine);
-      if (w.note) {
-        const noteLine = document.createElement('div');
-        noteLine.style.marginTop = '4px';
-        noteLine.innerHTML = `<span class="lbl">note:</span> <span></span>`;
-        noteLine.querySelector('span:last-child').textContent = safe(w.note);
-        detail.appendChild(noteLine);
+      // Always-visible meta: lemma + role (tense/part of speech)
+      const meta = document.createElement('div');
+      meta.className = 'word-meta';
+
+      // Lemma row only if lemma differs from surface form
+      const lemmaVal = safe(w.lemma);
+      if (lemmaVal && lemmaVal.toLowerCase() !== safe(w.word).toLowerCase()) {
+        const lemmaRow = document.createElement('div');
+        lemmaRow.className = 'lemma-row';
+        const arrow = document.createElement('span');
+        arrow.className = 'arrow';
+        arrow.textContent = '→';
+        const lemmaSpan = document.createElement('span');
+        lemmaSpan.className = 'lemma';
+        lemmaSpan.textContent = lemmaVal;
+        lemmaRow.appendChild(arrow);
+        lemmaRow.appendChild(lemmaSpan);
+        meta.appendChild(lemmaRow);
       }
 
-      card.appendChild(head);
-      card.appendChild(detail);
-      card.addEventListener('click', () => card.classList.toggle('expanded'));
+      // Role row (e.g. "verbo: presente indicativo, 1a sg")
+      if (safe(w.role)) {
+        const roleRow = document.createElement('div');
+        roleRow.className = 'role-row';
+        roleRow.textContent = safe(w.role);
+        meta.appendChild(roleRow);
+      }
+      card.appendChild(meta);
+
+      // Tap-revealed note (if any)
+      if (w.note) {
+        const detail = document.createElement('div');
+        detail.className = 'word-detail';
+        const noteLine = document.createElement('div');
+        noteLine.innerHTML = `<span class="lbl">nota:</span> <span></span>`;
+        noteLine.querySelector('span:last-child').textContent = safe(w.note);
+        detail.appendChild(noteLine);
+        card.appendChild(detail);
+
+        const hint = document.createElement('div');
+        hint.className = 'tap-hint';
+        hint.textContent = 'tap for note';
+        card.appendChild(hint);
+
+        card.addEventListener('click', () => card.classList.toggle('expanded'));
+      } else {
+        card.style.cursor = 'default';
+      }
+
       wlist.appendChild(card);
     });
   }
