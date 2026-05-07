@@ -191,7 +191,7 @@
   .badge.bad { background: rgba(255,93,93,0.12); color: var(--red); }
 
   .grammar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .grammar-corrected {
+  .grammar-corrected, .grammar-alt {
     background: var(--surface-2);
     border-left: 3px solid var(--accent);
     padding: 10px 12px;
@@ -199,6 +199,15 @@
     margin: 8px 0;
     font-style: italic;
   }
+  .grammar-alt { border-left-color: #8b5cf6; }
+  .grammar-label {
+    display: block;
+    font-size: 11px; font-style: normal; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .grammar-alt .grammar-label { color: #a78bfa; }
   .grammar-note {
     color: var(--text-dim); font-size: 14px; line-height: 1.5;
   }
@@ -577,7 +586,7 @@ For each word in the ORIGINAL Italian (in order), include:
 - role: ALWAYS specify the part of speech AND, for verbs, the full tense+mood+person+number, e.g. "verbo: indicativo presente, 1a sg" / "verbo: passato prossimo (avere + participio passato), 3a sg" / "verbo: congiuntivo imperfetto, 2a sg" / "verbo: condizionale presente, 1a pl". For non-verbs use forms like "sostantivo m. sg.", "aggettivo f. pl.", "preposizione articolata (di + il)", "pronome clitico (oggetto diretto, 3a sg m.)", "congiunzione subordinante (richiede congiuntivo)".
 - note: register, idiom, nuance, or anything learner-relevant — empty string if nothing notable.
 
-For grammar: set correct=true if the Italian is naturally formed; otherwise correct=false, supply corrected (the fixed Italian), and note (1-2 lines on what was off). literal = word-for-word English; natural = what a native English speaker would actually say.`;
+For grammar: set correct=true if the Italian is naturally formed; otherwise correct=false, supply corrected (the minimal fix to the user's original — change as little as possible), alternative (a different, more idiomatic native phrasing of the same idea — should clearly differ from corrected, not just be a re-paste of it; empty string if grammar is correct), and note (1-2 lines on what was off). literal = word-for-word English; natural = what a native English speaker would actually say.`;
 
   const TOOL_DEF = {
     name: 'translate_italian',
@@ -592,10 +601,11 @@ For grammar: set correct=true if the Italian is naturally formed; otherwise corr
           type: 'object',
           properties: {
             correct: { type: 'boolean' },
-            corrected: { type: 'string', description: 'Empty string if correct.' },
+            corrected: { type: 'string', description: 'Minimal fix to the user\'s original sentence. Empty if correct.' },
+            alternative: { type: 'string', description: 'A different, more idiomatic native phrasing of the same idea — must clearly differ from corrected. Empty if grammar is correct.' },
             note: { type: 'string', description: '1-2 line explanation of what was off, or empty string.' }
           },
-          required: ['correct', 'corrected', 'note']
+          required: ['correct', 'corrected', 'alternative', 'note']
         },
         words: {
           type: 'array',
@@ -701,7 +711,8 @@ For grammar: set correct=true if the Italian is naturally formed; otherwise corr
               ${grammarOk ? '✅ Corretto' : '❌ Da correggere'}
             </span>
           </div>
-          ${!grammarOk && d.grammar && d.grammar.corrected ? `<div class="grammar-corrected" id="r-corrected"></div>` : ''}
+          ${!grammarOk && d.grammar && d.grammar.corrected ? `<div class="grammar-corrected"><span class="grammar-label">Minimal correction</span><span id="r-corrected"></span></div>` : ''}
+          ${!grammarOk && d.grammar && d.grammar.alternative ? `<div class="grammar-alt"><span class="grammar-label">Native alternative</span><span id="r-alt"></span></div>` : ''}
           ${d.grammar && d.grammar.note ? `<div class="grammar-note" id="r-note"></div>` : ''}
         </div>
       </div>`;
@@ -722,6 +733,10 @@ For grammar: set correct=true if the Italian is naturally formed; otherwise corr
     if (d.grammar && d.grammar.corrected && !grammarOk) {
       const c = document.getElementById('r-corrected');
       if (c) c.textContent = d.grammar.corrected;
+    }
+    if (d.grammar && d.grammar.alternative && !grammarOk) {
+      const a = document.getElementById('r-alt');
+      if (a) a.textContent = d.grammar.alternative;
     }
     if (d.grammar && d.grammar.note) {
       const n = document.getElementById('r-note');
